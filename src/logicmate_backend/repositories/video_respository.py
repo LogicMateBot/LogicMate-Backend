@@ -1,41 +1,44 @@
 from typing import Any, List, Optional
+from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
 from logicmate_backend.dto.video.video_create_dto import VideoCreate
 from logicmate_backend.models.video_model import Video
 
 
+def transform_id(data: dict) -> dict:
+    if not data:
+        return data
+    data["id"] = str(data["_id"])
+    del data["_id"]
+    return data
+
 class VideoRepository:
-    def __init__(self):
-        self._storage: List[Video] = []
+    def __init__(self, db: AsyncIOMotorDatabase):
+        self.db = db
+        self.collection = self.db["videos"]
 
-    def list_all(self) -> List[Video]:
-        return self._storage
+    async def list_all(self) -> List[Video]:
+        cursor = self.collection.find({})
+        videos = await cursor.to_list(length=100)
+        return [Video(**transform_id(v)) for v in videos]
 
-    def get_by_id(self, video_id: str) -> Optional[Video]:
-        return next((v for v in self._storage if v.id == video_id), None)
+    async def get_by_id(self, video_id: str) -> Optional[Video]:
+        data = await self.collection.find_one({"_id": ObjectId(video_id)})
+        return Video(**transform_id(data)) if data else None
 
-    def create(self, video: VideoCreate) -> Video:
-        new_id = str(object=len(self._storage) + 1)
+    async def create(self, video: VideoCreate) -> Video:
+        payload = video.model_dump()
+        result = await self.collection.insert_one(payload)
+        created = await self.collection.find_one({"_id": result.inserted_id})
+        created = transform_id(created)
+        return Video(**created)
 
-        payload: dict[str, Any] = video.model_dump()
-        payload["id"] = new_id
+    async def update(self, video_id: str, data: dict) -> Optional[Video]:
+        await self.collection.update_one({"_id": ObjectId(video_id)}, {"$set": data})
+        updated = await self.collection.find_one({"_id": ObjectId(video_id)})
+        return Video(**transform_id(updated)) if updated else None
 
-        new_video = Video(**payload)
-        self._storage.append(new_video)
-        return new_video
-
-    def update(self, video_id: str, data: dict) -> Optional[Video]:
-        existing = self.get_by_id(video_id)
-        if not existing:
-            return None
-
-        updated: Video = existing.model_copy(update=data)
-        idx: int = self._storage.index(existing)
-        self._storage[idx] = updated
-        return updated
-
-    def delete(self, video_id: str) -> bool:
-        existing: Video | None = self.get_by_id(video_id)
-        if not existing:
-            return False
-        self._storage.remove(existing)
-        return True
+    async def delete(self, video_id: str) -> bool:
+        result = await self.collection.delete_one({"_id": ObjectId(video_id)})
+        return result.deleted_count == 1
