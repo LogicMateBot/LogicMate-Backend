@@ -10,7 +10,7 @@ app = FastAPI(
 )
 
 
-@app.get("/", tags=["root"])
+@app.get(path="/", tags=["root"])
 async def health_check() -> dict:
     return {"status": "ok", "message": "LogicMate Backend running"}
 
