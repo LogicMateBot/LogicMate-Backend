@@ -1,25 +1,78 @@
-from typing import List, Optional
+from typing import Any, Dict, Optional, List
 
-from logicmate_backend.dto.video.video_create_dto import VideoCreate
-from logicmate_backend.models.video_model import Video
-from logicmate_backend.repositories.video_respository import VideoRepository
+from logicmate_backend.dto.video_dto import VideoRequestDTO, VideoResponseDTO
+from logicmate_backend.models.video import Video
+from logicmate_backend.repositories.video_repository import VideoRepository
+from logicmate_backend.repositories.errors import RepositoryError
+from logicmate_backend.services.errors import ServiceError
 
 
 class VideoService:
-    def __init__(self, repo: VideoRepository):
-        self.repo = repo
+    def __init__(self, video_repository: VideoRepository) -> None:
+        self.video_repository = video_repository
 
-    async def list_videos(self) -> List[Video]:
-        return await self.repo.list_all()
+    async def get_all(self) -> List[VideoResponseDTO]:
+        try:
+            videos: List[Video] = await self.video_repository.get_all()
+        except RepositoryError as e:
+            raise ServiceError(f"Error retrieving videos: {e}")
 
-    async def get_video(self, video_id: str) -> Optional[Video]:
-        return await self.repo.get_by_id(video_id)
+        return [VideoResponseDTO.model_validate(obj=video.__dict__) for video in videos]
 
-    async def create_video(self, payload: VideoCreate) -> Video:
-        return await self.repo.create(payload)
+    async def get_by_id(self, video_id: str) -> Optional[VideoResponseDTO]:
+        try:
+            video: Optional[Video] = await self.video_repository.get_by_id(
+                video_id=video_id
+            )
+        except RepositoryError as e:
+            raise ServiceError(f"Error retrieving video by ID: {e}")
 
-    async def update_video(self, video_id: str, data: dict) -> Optional[Video]:
-        return await self.repo.update(video_id, data)
+        if video is None:
+            return None
 
-    async def delete_video(self, video_id: str) -> bool:
-        return await self.repo.delete(video_id)
+        return VideoResponseDTO.model_validate(obj=video.__dict__)
+
+    async def create(self, video_dto: VideoRequestDTO) -> Optional[VideoResponseDTO]:
+        video_dict: Dict[str, Any] = video_dto.model_dump()
+
+        try:
+            created_video: Optional[Video] = await self.video_repository.create(
+                video_dict=video_dict
+            )
+        except RepositoryError as e:
+            raise ServiceError(f"Error creating video: {e}")
+
+        if created_video is None:
+            return None
+
+        return VideoResponseDTO.model_validate(obj=created_video.__dict__)
+
+    async def update(
+        self, video_id: str, video_dto: VideoRequestDTO
+    ) -> Optional[VideoResponseDTO]:
+        video_dict: Dict[str, Any] = video_dto.model_dump()
+
+        try:
+            updated_video: Optional[Video] = await self.video_repository.update(
+                video_id=video_id, video_dict=video_dict
+            )
+        except RepositoryError as e:
+            raise ServiceError(f"Error updating video: {e}")
+
+        if updated_video is None:
+            return None
+
+        return VideoResponseDTO.model_validate(obj=updated_video.__dict__)
+
+    async def delete(self, video_id: str) -> Optional[VideoResponseDTO]:
+        try:
+            deleted_video: Optional[Video] = await self.video_repository.delete(
+                video_id=video_id
+            )
+        except RepositoryError as e:
+            raise ServiceError(f"Error deleting video: {e}")
+
+        if deleted_video is None:
+            return None
+
+        return VideoResponseDTO.model_validate(obj=deleted_video.__dict__)

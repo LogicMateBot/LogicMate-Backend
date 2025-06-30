@@ -1,44 +1,113 @@
-from typing import List, Dict, Any
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from logicmate_backend.dto.video.video_create_dto import VideoCreate
-from logicmate_backend.models.video_model import Video
-from logicmate_backend.repositories.video_respository import VideoRepository
+from logicmate_backend.config.db import get_main_db
+from logicmate_backend.dto.video_dto import VideoRequestDTO, VideoResponseDTO
+from logicmate_backend.repositories.video_repository import VideoRepository
 from logicmate_backend.services.video_service import VideoService
-from logicmate_backend.config.database import get_main_db 
+from logicmate_backend.services.errors import ServiceError
+
+
+def get_video_repository(
+    db: AsyncIOMotorDatabase = Depends(dependency=get_main_db),
+) -> VideoRepository:
+    return VideoRepository(db=db)
+
+
+def get_video_service(
+    repo: VideoRepository = Depends(dependency=get_video_repository),
+) -> VideoService:
+    return VideoService(video_repository=repo)
+
 
 router = APIRouter(prefix="/videos", tags=["videos"])
 
-# Inyectamos la base como dependencia y se la pasamos al repositorio y servicio
-def get_video_service(db: AsyncIOMotorDatabase = Depends(get_main_db)) -> VideoService:
-    return VideoService(VideoRepository(db))
 
-@router.get("/", response_model=List[Video])
-async def list_videos(service: VideoService = Depends(get_video_service)) -> List[Video]:
-    return await service.list_videos()
+@router.get(path="/", response_model=List[VideoResponseDTO])
+async def list_videos(
+    service: VideoService = Depends(dependency=get_video_service),
+) -> List[VideoResponseDTO]:
+    try:
+        videos = await service.get_all()
+        return videos
+    except ServiceError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
-@router.get("/{video_id}", response_model=Video)
-async def get_video(video_id: str, service: VideoService = Depends(get_video_service)) -> Video:
-    video = await service.get_video(video_id=video_id)
-    if not video:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
+
+@router.get(path="/{video_id}", response_model=VideoResponseDTO)
+async def get_video(
+    video_id: str, service: VideoService = Depends(dependency=get_video_service)
+) -> VideoResponseDTO:
+    try:
+        video = await service.get_by_id(video_id=video_id)
+    except ServiceError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+    if video is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Video not found"
+        )
+
     return video
 
-@router.post("/", response_model=Video, status_code=status.HTTP_201_CREATED)
-async def create_video(payload: VideoCreate, service: VideoService = Depends(get_video_service)) -> Video:
-    return await service.create_video(payload=payload)
 
-@router.put("/{video_id}", response_model=Video)
-async def update_video(video_id: str, data: Dict[str, Any], service: VideoService = Depends(get_video_service)) -> Video:
-    updated = await service.update_video(video_id=video_id, data=data)
-    if not updated:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
+@router.post(
+    path="/", response_model=VideoResponseDTO, status_code=status.HTTP_201_CREATED
+)
+async def create_video(
+    payload: VideoRequestDTO,
+    service: VideoService = Depends(dependency=get_video_service),
+) -> VideoResponseDTO:
+    try:
+        created = await service.create(video_dto=payload)
+    except ServiceError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if created is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Video creation failed"
+        )
+
+    return created
+
+
+@router.put(path="/{video_id}", response_model=VideoResponseDTO)
+async def update_video(
+    video_id: str,
+    payload: VideoRequestDTO,
+    service: VideoService = Depends(dependency=get_video_service),
+) -> VideoResponseDTO:
+    try:
+        updated = await service.update(video_id=video_id, video_dto=payload)
+    except ServiceError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Video not found for update"
+        )
+
     return updated
 
-@router.delete("/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_video(video_id: str, service: VideoService = Depends(get_video_service)) -> None:
-    success = await service.delete_video(video_id=video_id)
-    if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
+
+@router.delete(path="/{video_id}", response_model=VideoResponseDTO)
+async def delete_video(
+    video_id: str, service: VideoService = Depends(dependency=get_video_service)
+) -> VideoResponseDTO:
+    try:
+        deleted = await service.delete(video_id=video_id)
+    except ServiceError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if deleted is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Video not found for deletion"
+        )
+
+    return deleted
