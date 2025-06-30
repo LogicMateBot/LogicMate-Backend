@@ -1,8 +1,8 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
+from logicmate_backend.celery_app import process_videos_celery # puse el import asumiendo que lo tienes configurado
 from logicmate_backend.config.db import get_main_db
 from logicmate_backend.dto.video_dto import VideoRequestDTO, VideoResponseDTO
 from logicmate_backend.repositories.video_repository import VideoRepository
@@ -24,6 +24,25 @@ def get_video_service(
 
 router = APIRouter(prefix="/videos", tags=["videos"])
 
+@router.post("/process")
+async def process_videos(file: UploadFile = File(...)):
+    print(f"Content-Type recibido: {file.content_type}")
+
+    if not file.filename.lower().endswith(".mp4"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only MP4 video files are supported",
+        )
+
+    save_video = f"videos/{file.filename}"
+    with open(save_video, "wb") as buffer:
+        buffer.write(await file.read())
+    
+    queue = process_videos_celery.delay(save_video)
+    return {"message": "Video processing started", "task_id": queue.id}
+
+
+ 
 
 @router.get(path="/", response_model=List[VideoResponseDTO])
 async def list_videos(
