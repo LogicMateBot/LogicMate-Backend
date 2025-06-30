@@ -43,10 +43,10 @@ async def get_video(
     video_id: str, service: VideoService = Depends(dependency=get_video_service)
 ) -> VideoResponseDTO:
     try:
-        video = await service.get_by_id(video_id=video_id)
+        video: VideoResponseDTO | None = await service.get_by_id(video_id=video_id)
     except ServiceError as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(object=e)
         )
 
     if video is None:
@@ -65,9 +65,9 @@ async def create_video(
     service: VideoService = Depends(dependency=get_video_service),
 ) -> VideoResponseDTO:
     try:
-        created = await service.create(video_dto=payload)
+        created: VideoResponseDTO | None = await service.create(video_dto=payload)
     except ServiceError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(object=e))
 
     if created is None:
         raise HTTPException(
@@ -75,39 +75,3 @@ async def create_video(
         )
 
     return created
-
-
-@router.put(path="/{video_id}", response_model=VideoResponseDTO)
-async def update_video(
-    video_id: str,
-    payload: VideoRequestDTO,
-    service: VideoService = Depends(dependency=get_video_service),
-) -> VideoResponseDTO:
-    try:
-        updated = await service.update(video_id=video_id, video_dto=payload)
-    except ServiceError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-    if updated is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Video not found for update"
-        )
-
-    return updated
-
-
-@router.delete(path="/{video_id}", response_model=VideoResponseDTO)
-async def delete_video(
-    video_id: str, service: VideoService = Depends(dependency=get_video_service)
-) -> VideoResponseDTO:
-    try:
-        deleted = await service.delete(video_id=video_id)
-    except ServiceError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-    if deleted is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Video not found for deletion"
-        )
-
-    return deleted

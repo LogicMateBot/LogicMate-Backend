@@ -1,8 +1,7 @@
 from typing import Any, Dict, List, Optional
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo import ReturnDocument
-from pymongo.errors import PyMongoError, DuplicateKeyError
+from pymongo.errors import PyMongoError
 from pymongo.results import InsertOneResult
 
 from logicmate_backend.models.video import Video
@@ -30,7 +29,7 @@ class VideoRepository:
         return [Video(**video) for video in videos_json]
 
     async def get_by_id(self, video_id: str) -> Optional[Video]:
-        _id = self._validate_video_id(video_id=video_id)
+        _id: ObjectId = self._validate_video_id(video_id=video_id)
         try:
             doc = await self.collection.find_one({"_id": _id})
         except PyMongoError as e:
@@ -52,34 +51,3 @@ class VideoRepository:
         if not created:
             raise RepositoryError("Video creation failed, not found after insertion.")
         return created
-
-    async def update(self, video_id: str, video_dict: Dict[str, Any]) -> Video:
-        _id: ObjectId = self._validate_video_id(video_id=video_id)
-        try:
-            updated_doc = await self.collection.find_one_and_update(
-                filter={"_id": _id},
-                update={"$set": video_dict},
-                return_document=ReturnDocument.AFTER,
-            )
-        except DuplicateKeyError as e:
-            details: Any | Dict[Any, Any] = getattr(e, "details", {}) or {}
-            key_pattern = details.get("keyPattern", {})
-            msg = "A video with this key already exists."
-            raise RepositoryError(msg) from e
-        except PyMongoError as e:
-            raise RepositoryError(f"Error updating video in MongoDB: {e}") from e
-
-        if not updated_doc:
-            raise RepositoryError(f"Video with id {video_id} not found for update.")
-        return Video(**updated_doc)
-
-    async def delete(self, video_id: str) -> Video:
-        _id: ObjectId = self._validate_video_id(video_id=video_id)
-        try:
-            deleted_doc = await self.collection.find_one_and_delete(filter={"_id": _id})
-        except PyMongoError as e:
-            raise RepositoryError(f"Error deleting video from MongoDB: {e}")
-
-        if not deleted_doc:
-            raise RepositoryError(f"Video with id {video_id} not found for deletion.")
-        return Video(**deleted_doc)
