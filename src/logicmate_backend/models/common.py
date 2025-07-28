@@ -5,11 +5,15 @@ from pydantic import GetJsonSchemaHandler
 
 class PyObjectId(ObjectId):
     @classmethod
-    def __get_pydantic_core_schema__(cls, source, handler):
+    def __get_pydantic_core_schema__(
+        cls, source, handler
+    ) -> core_schema.PlainValidatorFunctionSchema:
         return core_schema.with_info_plain_validator_function(cls.validate)
 
     @classmethod
-    def __get_pydantic_json_schema__(cls, core_schema, handler: GetJsonSchemaHandler):
+    def __get_pydantic_json_schema__(
+        cls, core_schema, handler: GetJsonSchemaHandler
+    ) -> dict[str, str]:
         return {
             "type": "string",
             "format": "ObjectId",
@@ -22,7 +26,7 @@ class PyObjectId(ObjectId):
             return v
         if isinstance(v, str):
             try:
-                return ObjectId(v)
+                return ObjectId(oid=v)
             except Exception:
                 raise ValueError(f"Invalid ObjectId string: {v}")
         raise TypeError(f"Expected ObjectId or str, got {type(v)}")
