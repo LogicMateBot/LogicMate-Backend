@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from logicmate_backend.config.db import get_main_db
@@ -10,7 +10,6 @@ from logicmate_backend.dto.token_dto import (
 from logicmate_backend.dto.user_dto import UserResponseDTO
 from logicmate_backend.repositories.user_repository import UserRepository
 from logicmate_backend.services.token_service import TokenService
-from logicmate_backend.services.errors import ServiceError
 from logicmate_backend.services.user_service import UserService
 
 
@@ -32,7 +31,7 @@ def get_user_service(
     return UserService(user_repository=repo)
 
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 @router.post(
