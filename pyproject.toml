@@ -3,18 +3,23 @@ name = "logicmate-backend"
 version = "1.0.0"
 description = "Interactive Assistance Bot Backend Server on Algorithm Programs and Programming Flowcharts for the course “Introduction to Algorithmics”"
 authors = [
-    {name = "NightmareVCO",email = "vladimircuriel@outlook.com"}
+    { name = "Vladimir Curiel", email = "voco0001@ce.pucmm.edu.do" },
+    { name = "Natasha López", email = "nmlc0001@ce.pucmm.edu.do" },
 ]
 readme = "README.md"
 requires-python = "==3.10.18"
 dependencies = [
-    "fastapi (>=0.115.12,<0.116.0)",
-    "uvicorn[standard] (>=0.34.2,<0.35.0)",
-    "ruff (>=0.11.10,<0.12.0)",
-    "pyjwt (>=2.10.1,<3.0.0)",
-    "motor (>=3.7.1,<4.0.0)",
-    "python-dotenv (>=1.1.1,<2.0.0)",
-    "passlib[bcrypt] (>=1.7.4,<2.0.0)"
+    "fastapi (==0.115.12)",
+    "uvicorn[standard] (==0.34.2)",
+    "ruff (==0.11.10)",
+    "pyjwt (==2.10.1)",
+    "motor (==3.7.1)",
+    "python-dotenv (==1.1.1)",
+    "passlib[bcrypt] (==1.7.4)",
+    "celery (==5.3.6)",
+    "redis (==5.0.1)",
+    "flower (==2.0.1)",
+    "python-multipart (==0.0.20)"
 ]
 
 
