@@ -15,7 +15,7 @@ class User(BaseModel):
     videos: List[PyObjectId] = []
 
     class Config:
-        json_encoders = {PyObjectId: str}
+        json_encoders: dict[type[PyObjectId], type[str]] = {PyObjectId: str}
         validate_by_name = True
         arbitrary_types_allowed = True
         validate_assignment = True
