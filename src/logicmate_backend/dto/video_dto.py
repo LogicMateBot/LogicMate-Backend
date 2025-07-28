@@ -2,14 +2,13 @@ from typing import List
 from bson import ObjectId
 from fastapi import UploadFile
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from logicmate_backend.models.video import Scene
 
 
 class VideoRequestDTO(BaseModel):
     id: str
     duration: str
     categories: List[str]
-    scenes: List[Scene]
+    scenes: List
     title: str
     explanation: str
     code: str

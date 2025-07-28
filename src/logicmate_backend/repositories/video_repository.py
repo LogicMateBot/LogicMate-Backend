@@ -31,7 +31,7 @@ class VideoRepository:
     async def get_by_id(self, video_id: str) -> Optional[Video]:
         _id: ObjectId = self._validate_video_id(video_id=video_id)
         try:
-            doc = await self.collection.find_one({"_id": _id})
+            doc = await self.collection.find_one(filter={"_id": _id})
         except PyMongoError as e:
             raise RepositoryError(f"Error retrieving video by ID from MongoDB: {e}")
 
@@ -47,7 +47,18 @@ class VideoRepository:
         except PyMongoError as e:
             raise RepositoryError(f"Error creating video in MongoDB: {e}")
 
-        created: Video | None = await self.get_by_id(video_id=str(result.inserted_id))
+        created: Video | None = await self.get_by_id(
+            video_id=str(object=result.inserted_id)
+        )
         if not created:
             raise RepositoryError("Video creation failed, not found after insertion.")
         return created
+
+    async def get_all_by_user_email(self, user_email: str) -> List[Video]:
+        try:
+            cursor = self.collection.find({"users": user_email})
+            videos_json: List[Dict[str, Any]] = await cursor.to_list(length=100)
+        except PyMongoError as e:
+            raise RepositoryError(f"Error retrieving videos by user from MongoDB: {e}")
+
+        return [Video(**video) for video in videos_json]

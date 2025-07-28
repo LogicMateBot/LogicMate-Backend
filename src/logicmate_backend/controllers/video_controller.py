@@ -66,9 +66,9 @@ async def get_video(
 
 @router.post(path="/process")
 async def process_videos(
-    file: UploadFile = File(...),
-    users_emails: str = Form(...),
-    current_user_email: str = Form(...),
+    file: UploadFile = File(default=...),
+    users_emails: str = Form(default=...),
+    current_user_email: str = Form(default=...),
 ) -> dict[str, str]:
     try:
         parsed_users_emails = json.loads(users_emails)
@@ -124,3 +124,21 @@ async def create_video(
         )
 
     return created
+
+
+@router.get(path="/by-user/", response_model=List[VideoResponseDTO])
+async def get_videos_by_user(
+    email: str,
+    service: VideoService = Depends(dependency=get_video_service),
+) -> List[VideoResponseDTO]:
+    try:
+        videos: List[VideoResponseDTO] = await service.get_all_by_user_email(
+            user_email=email
+        )
+    except ServiceError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch videos for user {email}: {str(object=e)}",
+        )
+
+    return videos

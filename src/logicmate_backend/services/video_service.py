@@ -46,3 +46,13 @@ class VideoService:
             return None
 
         return VideoResponseDTO.model_validate(obj=created_video.__dict__)
+
+    async def get_all_by_user_email(self, user_email: str) -> List[VideoResponseDTO]:
+        try:
+            videos: List[Video] = await self.video_repository.get_all_by_user_email(
+                user_email=user_email
+            )
+        except RepositoryError as e:
+            raise ServiceError(f"Error retrieving videos for user {user_email}: {e}")
+
+        return [VideoResponseDTO.model_validate(obj=video.__dict__) for video in videos]
