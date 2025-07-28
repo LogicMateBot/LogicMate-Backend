@@ -22,7 +22,7 @@ def get_user_service(
     return UserService(user_repository=repo)
 
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 
 @router.get(path="/", response_model=List[UserResponseDTO])
